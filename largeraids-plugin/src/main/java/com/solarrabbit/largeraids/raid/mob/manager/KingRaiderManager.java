@@ -2,7 +2,8 @@ package com.solarrabbit.largeraids.raid.mob.manager;
 
 import com.solarrabbit.largeraids.LargeRaids;
 import com.solarrabbit.largeraids.raid.mob.KingRaider;
-import com.solarrabbit.largeraids.util.VersionUtil;
+import com.solarrabbit.largeraids.util.BukkitEnumUtil;
+import com.solarrabbit.largeraids.util.EntityUtil;
 
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -49,8 +50,12 @@ public class KingRaiderManager implements BossRaiderManager, Listener {
     public KingRaider spawn(Location location) {
         Ravager ravager = (Ravager) location.getWorld().spawnEntity(location, EntityType.RAVAGER);
         ravager.setCustomName("Juggernaut");
-        ravager.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(RAVAGER_MAX_HEALTH);
-        ravager.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).setBaseValue(RAVAGER_ATTACK_DAMAGE);
+        Attribute maxHealth = BukkitEnumUtil.attribute("GENERIC_MAX_HEALTH", "MAX_HEALTH");
+        Attribute attackDamage = BukkitEnumUtil.attribute("GENERIC_ATTACK_DAMAGE", "ATTACK_DAMAGE");
+        if (maxHealth != null && ravager.getAttribute(maxHealth) != null)
+            ravager.getAttribute(maxHealth).setBaseValue(RAVAGER_MAX_HEALTH);
+        if (attackDamage != null && ravager.getAttribute(attackDamage) != null)
+            ravager.getAttribute(attackDamage).setBaseValue(RAVAGER_ATTACK_DAMAGE);
         ravager.setHealth(RAVAGER_MAX_HEALTH);
         ravager.getPersistentDataContainer().set(getJuggernautNamespacedKey(), PersistentDataType.BYTE, (byte) 0);
         ravager.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, Integer.MAX_VALUE, 4));
@@ -98,7 +103,7 @@ public class KingRaiderManager implements BossRaiderManager, Listener {
         if (evt.getEntityType() != EntityType.VEX)
             return;
         Vex vex = (Vex) evt.getEntity();
-        LivingEntity owner = VersionUtil.getCraftVexWrapper(vex).getOwner();
+        LivingEntity owner = EntityUtil.getVexOwner(vex);
         if (!(owner instanceof Spellcaster))
             return;
         Spellcaster evoker = (Spellcaster) owner;
@@ -120,16 +125,16 @@ public class KingRaiderManager implements BossRaiderManager, Listener {
     private ItemStack getDefaultBanner() {
         ItemStack banner = new ItemStack(Material.WHITE_BANNER);
         BannerMeta meta = (BannerMeta) banner.getItemMeta();
-        meta.addPattern(new Pattern(DyeColor.CYAN, PatternType.RHOMBUS_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.LIGHT_GRAY, PatternType.STRIPE_BOTTOM));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.HALF_HORIZONTAL));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.STRIPE_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.GRAY, PatternType.STRIPE_CENTER));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.SKULL));
-        meta.addPattern(new Pattern(DyeColor.LIGHT_GRAY, PatternType.CIRCLE_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.TRIANGLE_TOP));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.BORDER));
-        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
+        addPattern(meta, DyeColor.CYAN, "RHOMBUS_MIDDLE", "RHOMBUS");
+        addPattern(meta, DyeColor.LIGHT_GRAY, "STRIPE_BOTTOM");
+        addPattern(meta, DyeColor.BLACK, "HALF_HORIZONTAL", "HALF_HORIZONTAL_BOTTOM");
+        addPattern(meta, DyeColor.BLACK, "STRIPE_MIDDLE");
+        addPattern(meta, DyeColor.GRAY, "STRIPE_CENTER");
+        addPattern(meta, DyeColor.BLACK, "SKULL");
+        addPattern(meta, DyeColor.LIGHT_GRAY, "CIRCLE_MIDDLE", "CIRCLE");
+        addPattern(meta, DyeColor.BLACK, "TRIANGLE_TOP");
+        addPattern(meta, DyeColor.BLACK, "BORDER");
+        addItemFlag(meta, "HIDE_POTION_EFFECTS", "HIDE_ADDITIONAL_TOOLTIP");
         meta.setDisplayName(ChatColor.RED.toString() + ChatColor.ITALIC + "King Raider Banner");
         banner.setItemMeta(meta);
         return banner;
@@ -138,8 +143,22 @@ public class KingRaiderManager implements BossRaiderManager, Listener {
     private ItemStack getKingVexSword() {
         ItemStack item = new ItemStack(Material.DIAMOND_SWORD);
         item.addEnchantment(Enchantment.FIRE_ASPECT, 2);
-        item.addEnchantment(Enchantment.DAMAGE_ALL, 3);
+        Enchantment sharpness = BukkitEnumUtil.enchantment("DAMAGE_ALL", "SHARPNESS");
+        if (sharpness != null)
+            item.addEnchantment(sharpness, 3);
         return item;
+    }
+
+    private void addPattern(BannerMeta meta, DyeColor color, String... names) {
+        PatternType type = BukkitEnumUtil.patternType(names);
+        if (type != null)
+            meta.addPattern(new Pattern(color, type));
+    }
+
+    private void addItemFlag(BannerMeta meta, String... names) {
+        ItemFlag flag = BukkitEnumUtil.itemFlag(names);
+        if (flag != null)
+            meta.addItemFlags(flag);
     }
 
     private boolean isJuggernaut(Ravager entity) {

@@ -2,9 +2,8 @@ package com.solarrabbit.largeraids.config;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 
@@ -16,16 +15,16 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.Test;
 
 public class SoundsConfigTest {
-    private static final File SRC_DIR = new File("src");
-    private static final File TEST_DIR = new File(SRC_DIR, "test");
-    private static final File RESOURCE_DIR = new File(TEST_DIR, "resources");
     private static SoundsConfig instance;
 
     private SoundsConfig getSoundConfigOne() throws IOException, InvalidConfigurationException {
         if (instance != null)
             return instance;
-        File file = new File(RESOURCE_DIR, "raidconfig1.yml");
-        Reader reader = new InputStreamReader(new FileInputStream(file));
+        InputStream input = SoundsConfigTest.class.getClassLoader().getResourceAsStream("raidconfig1.yml");
+        if (input == null) {
+            throw new IOException("Test resource raidconfig1.yml not found on classpath");
+        }
+        Reader reader = new InputStreamReader(input);
         FileConfiguration fileConfig = new YamlConfiguration();
         fileConfig.load(reader);
         ConfigurationSection configSection = fileConfig.getConfigurationSection("raid.sounds");

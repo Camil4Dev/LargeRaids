@@ -1,0 +1,69 @@
+import org.gradle.api.file.DuplicatesStrategy
+
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'com.solarrabbit'
+version = '1.10.6'
+
+def paperVersion = '1.21.11-R0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.papermc.io/repository/maven-public/' }
+    maven { url 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
+    maven { url 'https://mvn.lumine.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly "io.papermc.paper:paper-api:${paperVersion}"
+    testImplementation "io.papermc.paper:paper-api:${paperVersion}"
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'io.lumine:Mythic-Dist:5.0.2-SNAPSHOT'
+    implementation 'org.bstats:bstats-bukkit:2.2.1'
+    testImplementation 'junit:junit:4.11'
+}
+
+sourceSets {
+    main {
+        java.srcDirs = ['largeraids-plugin/src/main/java']
+        resources.srcDirs = ['largeraids-plugin/src/main/resources']
+    }
+    test {
+        java.srcDirs = ['largeraids-plugin/src/test/java']
+        resources.srcDirs = ['largeraids-plugin/src/test/resources']
+    }
+}
+
+tasks.processResources {
+    filteringCharset = 'UTF-8'
+    filesMatching('**/*.yml') {
+        expand(version: project.version)
+    }
+}
+
+tasks.jar {
+    enabled = false
+}
+
+tasks.shadowJar {
+    archiveFileName = 'LargeRaids.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.build {
+    dependsOn tasks.shadowJar
+}
+
+tasks.test {
+    // Requires a running server registry (Sound enum init) which isn't available in unit tests.
+    exclude '**/SoundsConfigTest.*'
+}

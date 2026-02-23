@@ -5,10 +5,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import com.solarrabbit.largeraids.nms.AbstractCraftRaidWrapper;
-import com.solarrabbit.largeraids.nms.AbstractRaidWrapper;
 import com.solarrabbit.largeraids.raid.LargeRaid;
 import com.solarrabbit.largeraids.raid.RaidManager;
+import com.solarrabbit.largeraids.util.BukkitEnumUtil;
 
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
@@ -61,7 +60,11 @@ public class BossBarCreator implements Listener {
 
     private void updateBossBarProgress(Raider boss) {
         BossBar bar = RAID_BOSSES.get(boss);
-        double progress = boss.getHealth() / boss.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+        Attribute maxHealth = BukkitEnumUtil.attribute("GENERIC_MAX_HEALTH", "MAX_HEALTH");
+        double max = maxHealth == null || boss.getAttribute(maxHealth) == null
+                ? boss.getHealth()
+                : boss.getAttribute(maxHealth).getValue();
+        double progress = max == 0 ? 0 : boss.getHealth() / max;
         progress = Math.min(1, Math.max(0, progress));
         bar.setProgress(progress);
     }
@@ -69,11 +72,7 @@ public class BossBarCreator implements Listener {
     private void updateBossBarVisibility(Raider boss) {
         BossBar bar = RAID_BOSSES.get(boss);
         bar.removeAll();
-        AbstractRaidWrapper nmsRaid = VersionUtil.getCraftRaiderWrapper(boss).getHandle().getCurrentRaid();
-        if (nmsRaid.isEmpty())
-            return;
-        AbstractCraftRaidWrapper craftRaid = VersionUtil.getCraftRaidWrapper(nmsRaid);
-        Optional<LargeRaid> lr = raidManager.getLargeRaid(craftRaid.getRaid());
+        Optional<LargeRaid> lr = raidManager.getLargeRaid(boss);
         if (boss.isDead()) {
             unregisterEntity(boss);
         } else if (lr.isPresent()) {

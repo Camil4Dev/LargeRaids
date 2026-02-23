@@ -2,7 +2,8 @@ package com.solarrabbit.largeraids.raid.mob.manager;
 
 import com.solarrabbit.largeraids.LargeRaids;
 import com.solarrabbit.largeraids.raid.mob.Necromancer;
-import com.solarrabbit.largeraids.util.VersionUtil;
+import com.solarrabbit.largeraids.util.BukkitEnumUtil;
+import com.solarrabbit.largeraids.util.EntityUtil;
 
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -57,7 +58,7 @@ public class NecromancerManager implements CustomRaiderManager, Listener {
         if (evt.getEntityType() != EntityType.VEX)
             return;
         Vex vex = (Vex) evt.getEntity();
-        LivingEntity owner = VersionUtil.getCraftVexWrapper(vex).getOwner();
+        LivingEntity owner = EntityUtil.getVexOwner(vex);
         if (!(owner instanceof Spellcaster))
             return;
         Spellcaster evoker = (Spellcaster) owner;
@@ -122,16 +123,28 @@ public class NecromancerManager implements CustomRaiderManager, Listener {
     private ItemStack getDefaultBanner() {
         ItemStack banner = new ItemStack(Material.GRAY_BANNER);
         BannerMeta meta = (BannerMeta) banner.getItemMeta();
-        meta.addPattern(new Pattern(DyeColor.YELLOW, PatternType.RHOMBUS_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.GRAY, PatternType.STRIPE_DOWNLEFT));
-        meta.addPattern(new Pattern(DyeColor.YELLOW, PatternType.STRIPE_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.SKULL));
-        meta.addPattern(new Pattern(DyeColor.WHITE, PatternType.SKULL));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.BORDER));
-        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
+        addPattern(meta, DyeColor.YELLOW, "RHOMBUS_MIDDLE", "RHOMBUS");
+        addPattern(meta, DyeColor.GRAY, "STRIPE_DOWNLEFT");
+        addPattern(meta, DyeColor.YELLOW, "STRIPE_MIDDLE");
+        addPattern(meta, DyeColor.BLACK, "SKULL");
+        addPattern(meta, DyeColor.WHITE, "SKULL");
+        addPattern(meta, DyeColor.BLACK, "BORDER");
+        addItemFlag(meta, "HIDE_POTION_EFFECTS", "HIDE_ADDITIONAL_TOOLTIP");
         meta.setDisplayName(ChatColor.GOLD.toString() + ChatColor.ITALIC + "Necromancer Banner");
         banner.setItemMeta(meta);
         return banner;
+    }
+
+    private void addPattern(BannerMeta meta, DyeColor color, String... names) {
+        PatternType type = BukkitEnumUtil.patternType(names);
+        if (type != null)
+            meta.addPattern(new Pattern(color, type));
+    }
+
+    private void addItemFlag(BannerMeta meta, String... names) {
+        ItemFlag flag = BukkitEnumUtil.itemFlag(names);
+        if (flag != null)
+            meta.addItemFlags(flag);
     }
 
     private boolean isNecromancer(Spellcaster entity) {

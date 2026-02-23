@@ -3,6 +3,7 @@ package com.solarrabbit.largeraids.command;
 import java.util.Map;
 
 import com.solarrabbit.largeraids.LargeRaids;
+import com.solarrabbit.largeraids.util.BukkitEnumUtil;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -147,7 +148,10 @@ public class VillageCentresCommand implements CommandExecutor {
     private void highlightLocation(Location location) {
         if (location.getWorld() == null || !location.getChunk().isLoaded())
             return;
-        location.getWorld().spawnParticle(Particle.CRIT_MAGIC, location, 50, 0.5, 0.5, 0.5, 0);
+        Particle particle = BukkitEnumUtil.particle("CRIT_MAGIC", "CRIT");
+        if (particle == null)
+            return;
+        location.getWorld().spawnParticle(particle, location, 50, 0.5, 0.5, 0.5, 0);
     }
 
     private void plotSphere(Location center, double radius) {
@@ -170,7 +174,9 @@ public class VillageCentresCommand implements CommandExecutor {
                 mutLoc.setX((x * radius * r) + center.getBlockX());
                 mutLoc.setZ((z * radius * r) + center.getBlockZ());
                 mutLoc.setY((y * radius) + center.getBlockY());
-                world.spawnParticle(Particle.REDSTONE, mutLoc, 1, 1, 1, 1, 0, options, true);
+                Particle particle = BukkitEnumUtil.particle("REDSTONE", "DUST");
+                if (particle != null)
+                    world.spawnParticle(particle, mutLoc, 1, 1, 1, 1, 0, options, true);
             }
         }
     }

@@ -10,7 +10,6 @@ import com.solarrabbit.largeraids.raid.LargeRaid;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -38,7 +37,7 @@ public class DropInLavaTriggerListener extends Trigger {
 
     @EventHandler
     public void onItemBurnInLava(EntityDamageEvent evt) {
-        if (evt.getEntityType() != EntityType.DROPPED_ITEM)
+        if (!(evt.getEntity() instanceof Item))
             return;
         Item entity = (Item) evt.getEntity();
         if (!entity.getPersistentDataContainer().has(getNamespacedKey(), PersistentDataType.STRING))

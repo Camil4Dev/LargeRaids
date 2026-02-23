@@ -2,6 +2,7 @@ package com.solarrabbit.largeraids.raid.mob.manager;
 
 import com.solarrabbit.largeraids.LargeRaids;
 import com.solarrabbit.largeraids.raid.mob.FireworkPillager;
+import com.solarrabbit.largeraids.util.BukkitEnumUtil;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -38,7 +39,9 @@ public class FireworkPillagerManager implements CustomRaiderManager, Listener {
     @Override
     public FireworkPillager spawn(Location location) {
         Pillager entity = (Pillager) location.getWorld().spawnEntity(location, EntityType.PILLAGER);
-        entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(DEFAULT_MAX_HEALTH);
+        Attribute maxHealth = BukkitEnumUtil.attribute("GENERIC_MAX_HEALTH", "MAX_HEALTH");
+        if (maxHealth != null && entity.getAttribute(maxHealth) != null)
+            entity.getAttribute(maxHealth).setBaseValue(DEFAULT_MAX_HEALTH);
         entity.setHealth(DEFAULT_MAX_HEALTH);
         EntityEquipment equipment = entity.getEquipment();
         equipment.setItemInOffHand(getDefaultFirework());
@@ -66,7 +69,8 @@ public class FireworkPillagerManager implements CustomRaiderManager, Listener {
     private void onDamageRaider(EntityDamageByEntityEvent evt) {
         if (evt.getCause() != DamageCause.ENTITY_EXPLOSION)
             return;
-        if (evt.getDamager().getType() != EntityType.FIREWORK)
+        EntityType fireworkType = BukkitEnumUtil.entityType("FIREWORK", "FIREWORK_ROCKET");
+        if (fireworkType == null || evt.getDamager().getType() != fireworkType)
             return;
         if (!(evt.getEntity() instanceof Raider))
             return;
@@ -88,16 +92,28 @@ public class FireworkPillagerManager implements CustomRaiderManager, Listener {
     private ItemStack getDefaultBanner() {
         ItemStack banner = new ItemStack(Material.YELLOW_BANNER);
         BannerMeta meta = (BannerMeta) banner.getItemMeta();
-        meta.addPattern(new Pattern(DyeColor.MAGENTA, PatternType.STRIPE_CENTER));
-        meta.addPattern(new Pattern(DyeColor.ORANGE, PatternType.CURLY_BORDER));
-        meta.addPattern(new Pattern(DyeColor.RED, PatternType.STRIPE_SMALL));
-        meta.addPattern(new Pattern(DyeColor.RED, PatternType.RHOMBUS_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.YELLOW, PatternType.FLOWER));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.BORDER));
-        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
+        addPattern(meta, DyeColor.MAGENTA, "STRIPE_CENTER");
+        addPattern(meta, DyeColor.ORANGE, "CURLY_BORDER");
+        addPattern(meta, DyeColor.RED, "STRIPE_SMALL", "STRIPE_SMALL_HORIZONTAL");
+        addPattern(meta, DyeColor.RED, "RHOMBUS_MIDDLE", "RHOMBUS");
+        addPattern(meta, DyeColor.YELLOW, "FLOWER");
+        addPattern(meta, DyeColor.BLACK, "BORDER");
+        addItemFlag(meta, "HIDE_POTION_EFFECTS", "HIDE_ADDITIONAL_TOOLTIP");
         meta.setDisplayName(ChatColor.GOLD.toString() + ChatColor.ITALIC + "Firework Pillager Banner");
         banner.setItemMeta(meta);
         return banner;
+    }
+
+    private void addPattern(BannerMeta meta, DyeColor color, String... names) {
+        PatternType type = BukkitEnumUtil.patternType(names);
+        if (type != null)
+            meta.addPattern(new Pattern(color, type));
+    }
+
+    private void addItemFlag(BannerMeta meta, String... names) {
+        ItemFlag flag = BukkitEnumUtil.itemFlag(names);
+        if (flag != null)
+            meta.addItemFlags(flag);
     }
 
     private boolean isFireworkPillager(Pillager pillager) {

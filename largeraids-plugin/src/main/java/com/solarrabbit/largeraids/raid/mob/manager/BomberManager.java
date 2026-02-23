@@ -2,7 +2,8 @@ package com.solarrabbit.largeraids.raid.mob.manager;
 
 import com.solarrabbit.largeraids.LargeRaids;
 import com.solarrabbit.largeraids.raid.mob.Bomber;
-import com.solarrabbit.largeraids.util.VersionUtil;
+import com.solarrabbit.largeraids.util.BukkitEnumUtil;
+import com.solarrabbit.largeraids.util.EntityUtil;
 
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -11,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.EvokerFangs;
 import org.bukkit.entity.LivingEntity;
@@ -79,7 +81,7 @@ public class BomberManager implements CustomRaiderManager, Listener {
         if (evt.getEntityType() != EntityType.VEX)
             return;
         Vex vex = (Vex) evt.getEntity();
-        LivingEntity owner = VersionUtil.getCraftVexWrapper(vex).getOwner();
+        LivingEntity owner = EntityUtil.getVexOwner(vex);
         if (!(owner instanceof Spellcaster))
             return;
         if (isBomber((Spellcaster) owner)) {
@@ -97,14 +99,20 @@ public class BomberManager implements CustomRaiderManager, Listener {
         if (!isBomberVex(damager))
             return;
         evt.setCancelled(true);
-        TNTPrimed tnt = (TNTPrimed) damager.getWorld().spawnEntity(damager.getLocation(), EntityType.PRIMED_TNT);
+        EntityType tntType = BukkitEnumUtil.entityType("PRIMED_TNT", "TNT");
+        if (tntType == null)
+            return;
+        Entity spawned = damager.getWorld().spawnEntity(damager.getLocation(), tntType);
+        if (!(spawned instanceof TNTPrimed))
+            return;
+        TNTPrimed tnt = (TNTPrimed) spawned;
         tnt.setFuseTicks(PRIMED_TNT_TICKS);
         tnt.getPersistentDataContainer().set(getTNTNamespacedKey(), PersistentDataType.BYTE, (byte) 0);
     }
 
     @EventHandler
     private void onTNTDetonate(EntityExplodeEvent evt) {
-        if (evt.getEntityType() != EntityType.PRIMED_TNT)
+        if (!(evt.getEntity() instanceof TNTPrimed))
             return;
         TNTPrimed tnt = (TNTPrimed) evt.getEntity();
         if (!isVexTNT(tnt))
@@ -115,7 +123,7 @@ public class BomberManager implements CustomRaiderManager, Listener {
 
     @EventHandler
     private void onTNTDamage(EntityDamageByEntityEvent evt) {
-        if (evt.getDamager().getType() != EntityType.PRIMED_TNT)
+        if (!(evt.getDamager() instanceof TNTPrimed))
             return;
         TNTPrimed tnt = (TNTPrimed) evt.getDamager();
         if (!(isVexTNT(tnt)))
@@ -126,17 +134,29 @@ public class BomberManager implements CustomRaiderManager, Listener {
     private ItemStack getDefaultBanner() {
         ItemStack banner = new ItemStack(Material.LIGHT_GRAY_BANNER);
         BannerMeta meta = (BannerMeta) banner.getItemMeta();
-        meta.addPattern(new Pattern(DyeColor.ORANGE, PatternType.RHOMBUS_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.YELLOW, PatternType.FLOWER));
-        meta.addPattern(new Pattern(DyeColor.LIGHT_GRAY, PatternType.DIAGONAL_LEFT_MIRROR));
-        meta.addPattern(new Pattern(DyeColor.LIGHT_GRAY, PatternType.DIAGONAL_RIGHT));
-        meta.addPattern(new Pattern(DyeColor.RED, PatternType.GRADIENT_UP));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.CIRCLE_MIDDLE));
-        meta.addPattern(new Pattern(DyeColor.BLACK, PatternType.BORDER));
-        meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
+        addPattern(meta, DyeColor.ORANGE, "RHOMBUS_MIDDLE", "RHOMBUS");
+        addPattern(meta, DyeColor.YELLOW, "FLOWER");
+        addPattern(meta, DyeColor.LIGHT_GRAY, "DIAGONAL_LEFT_MIRROR", "DIAGONAL_LEFT");
+        addPattern(meta, DyeColor.LIGHT_GRAY, "DIAGONAL_RIGHT");
+        addPattern(meta, DyeColor.RED, "GRADIENT_UP", "GRADIENT");
+        addPattern(meta, DyeColor.BLACK, "CIRCLE_MIDDLE", "CIRCLE");
+        addPattern(meta, DyeColor.BLACK, "BORDER");
+        addItemFlag(meta, "HIDE_POTION_EFFECTS", "HIDE_ADDITIONAL_TOOLTIP");
         meta.setDisplayName(ChatColor.GOLD.toString() + ChatColor.ITALIC + "Bomber Banner");
         banner.setItemMeta(meta);
         return banner;
+    }
+
+    private void addPattern(BannerMeta meta, DyeColor color, String... names) {
+        PatternType type = BukkitEnumUtil.patternType(names);
+        if (type != null)
+            meta.addPattern(new Pattern(color, type));
+    }
+
+    private void addItemFlag(BannerMeta meta, String... names) {
+        ItemFlag flag = BukkitEnumUtil.itemFlag(names);
+        if (flag != null)
+            meta.addItemFlags(flag);
     }
 
     private boolean isBomber(Spellcaster entity) {

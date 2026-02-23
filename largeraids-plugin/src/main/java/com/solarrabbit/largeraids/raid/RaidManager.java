@@ -7,13 +7,6 @@ import java.util.Set;
 import com.solarrabbit.largeraids.LargeRaids;
 import com.solarrabbit.largeraids.event.LargeRaidExtendEvent;
 import com.solarrabbit.largeraids.event.LargeRaidTriggerEvent;
-import com.solarrabbit.largeraids.nms.AbstractBlockPositionWrapper;
-import com.solarrabbit.largeraids.nms.AbstractCraftRaidWrapper;
-import com.solarrabbit.largeraids.nms.AbstractCraftWorldWrapper;
-import com.solarrabbit.largeraids.nms.AbstractRaidWrapper;
-import com.solarrabbit.largeraids.nms.AbstractRaiderWrapper;
-import com.solarrabbit.largeraids.util.VersionUtil;
-
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Raid;
@@ -69,11 +62,7 @@ public class RaidManager implements Listener {
     @EventHandler
     private void onSpawn(RaidSpawnWaveEvent evt) {
         // TODO Confirm to prevent ConcurrentModificationException
-        Bukkit.getScheduler().runTask(plugin, () -> getLargeRaid(evt.getRaid()).ifPresent(largeRaid -> {
-            setIdle();
-            largeRaid.spawnWave();
-            setActive();
-        }));
+        Bukkit.getScheduler().runTask(plugin, () -> getLargeRaid(evt.getRaid()).ifPresent(LargeRaid::onWaveSpawn));
     }
 
     /**
@@ -89,6 +78,8 @@ public class RaidManager implements Listener {
             return;
         if (!plugin.getTriggerConfig().canNormalRaid())
             evt.setCancelled(true);
+        if (!evt.isCancelled())
+            registerRaid(evt.getRaid());
     }
 
     @EventHandler
@@ -136,12 +127,7 @@ public class RaidManager implements Listener {
                 return;
         }
 
-        AbstractRaiderWrapper wrapper = VersionUtil.getCraftRaiderWrapper(raider).getHandle();
-        AbstractRaidWrapper nmsRaid = wrapper.getCurrentRaid();
-        if (nmsRaid.isEmpty())
-            return;
-        AbstractCraftRaidWrapper craftRaid = VersionUtil.getCraftRaidWrapper(nmsRaid);
-        Optional<LargeRaid> lr = getLargeRaid(craftRaid.getRaid());
+        Optional<LargeRaid> lr = getLargeRaid(raider);
         lr.ifPresent(r -> {
             r.incrementPlayerDamage(damager, Math.min(raider.getHealth(), evt.getFinalDamage()));
             if (raider.getHealth() - evt.getFinalDamage() <= 0)
@@ -154,35 +140,23 @@ public class RaidManager implements Listener {
     }
 
     private void tick() {
-        for (LargeRaid largeRaid : currentRaids)
-            if (largeRaid.isActive() && largeRaid.getTotalRaidersAlive() == 0 && !largeRaid.isLoading()
-                    && !largeRaid.isLastWave()) {
-                setIdle();
-                largeRaid.triggerNextWave();
-                setActive();
-            }
+        currentRaids.removeIf(raid -> !raid.isActive() && raid.getRaid().getStatus() == RaidStatus.STOPPED);
     }
 
     public Optional<LargeRaid> getLargeRaid(Location location) {
-        AbstractBlockPositionWrapper blockPos = VersionUtil.getBlockPositionWrapper(location);
-        AbstractCraftWorldWrapper craftWorld = VersionUtil.getCraftWorldWrapper(location.getWorld());
-        AbstractRaidWrapper nmsRaid = craftWorld.getHandle().getRaidAt(blockPos);
-        if (nmsRaid.isEmpty())
-            return Optional.empty();
-        AbstractCraftRaidWrapper craftRaid = VersionUtil.getCraftRaidWrapper(nmsRaid);
-        return getLargeRaid(craftRaid.getRaid());
+        return currentRaids.stream().filter(raid -> raid.isInRadius(location)).findFirst();
     }
 
     public Optional<LargeRaid> getLargeRaid(Raid raid) {
         return currentRaids.stream().filter(largeRaid -> largeRaid.isSimilar(raid)).findFirst();
     }
 
+    public Optional<LargeRaid> getLargeRaid(Raider raider) {
+        return currentRaids.stream().filter(largeRaid -> largeRaid.containsRaider(raider)).findFirst();
+    }
+
     public Optional<Raid> getRaid(Location location) {
-        AbstractBlockPositionWrapper blockPos = VersionUtil.getBlockPositionWrapper(location);
-        AbstractCraftWorldWrapper world = VersionUtil.getCraftWorldWrapper(location.getWorld());
-        AbstractRaidWrapper raid = world.getHandle().getRaidAt(blockPos);
-        return Optional.of(raid).filter(r -> !r.isEmpty()).map(VersionUtil::getCraftRaidWrapper)
-                .map(AbstractCraftRaidWrapper::getRaid);
+        return getLargeRaid(location).map(LargeRaid::getRaid);
     }
 
     /**
@@ -193,20 +167,7 @@ public class RaidManager implements Listener {
      * @param omenLevel for the raid start with
      */
     public void createRaid(Location location, int omenLevel) {
-        Optional<LargeRaid> currentRaid = getLargeRaid(location);
-        if (currentRaid.isPresent())
-            return;
-        LargeRaid largeRaid = new LargeRaid(plugin.getRaidConfig(), plugin.getRewardsConfig(), location, omenLevel);
-        setIdle();
-        if (largeRaid.startRaid()) {
-            LargeRaidTriggerEvent evt = new LargeRaidTriggerEvent(largeRaid);
-            Bukkit.getPluginManager().callEvent(evt);
-            if (evt.isCancelled())
-                largeRaid.stopRaid();
-            else
-                currentRaids.add(largeRaid);
-        }
-        setActive();
+        // API-only build cannot create raids; handled by Trigger.
     }
 
     /**
@@ -221,6 +182,20 @@ public class RaidManager implements Listener {
         int newLevel = raid.getBadOmenLevel();
         if (newLevel != oldLevel)
             Bukkit.getPluginManager().callEvent(new LargeRaidExtendEvent(raid, oldLevel, newLevel));
+    }
+
+    public boolean canCreateRaids() {
+        return false;
+    }
+
+    private void registerRaid(Raid raid) {
+        if (getLargeRaid(raid).isPresent())
+            return;
+        LargeRaid largeRaid = new LargeRaid(plugin.getRaidConfig(), plugin.getRewardsConfig(), raid);
+        LargeRaidTriggerEvent evt = new LargeRaidTriggerEvent(largeRaid);
+        Bukkit.getPluginManager().callEvent(evt);
+        if (!evt.isCancelled())
+            currentRaids.add(largeRaid);
     }
 
 }
