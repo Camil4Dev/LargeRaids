@@ -1,0 +1,15 @@
+name: LargeRaids
+version: '1.10.6'
+main: com.solarrabbit.largeraids.LargeRaids
+api-version: 1.21
+authors:
+  - SolarRabbit
+
+dependencies:
+  server:
+    PlaceholderAPI:
+      required: false
+    MythicMobs:
+      required: false
+    Multiverse-Core:
+      required: false
